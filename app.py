@@ -1,17 +1,22 @@
 import streamlit as st
 import cv2
-import mediapipe as mp
 import numpy as np
 from PIL import Image
+import mediapipe as mp
 
 st.set_page_config(page_title="Eye State Detection", layout="centered")
 
 st.title("👀 Eye Open / Close Detection")
 st.write("Upload a face image to detect eye state")
 
-# Initialize MediaPipe
+# Initialize MediaPipe FaceMesh safely
 mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(refine_landmarks=True)
+face_mesh = mp_face_mesh.FaceMesh(
+    static_image_mode=True,
+    max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.5
+)
 
 # Eye landmark indices
 LEFT_EYE = [33, 160, 158, 133, 153, 144]
@@ -28,38 +33,38 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file:
-    image = Image.open(uploaded_file)
+    image = Image.open(uploaded_file).convert("RGB")
     img = np.array(image)
 
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    results = face_mesh.process(rgb)
+    results = face_mesh.process(img)
 
     if results.multi_face_landmarks:
-        for face_landmarks in results.multi_face_landmarks:
-            h, w, _ = img.shape
+        face_landmarks = results.multi_face_landmarks[0]
+        h, w, _ = img.shape
 
-            left_eye = np.array([
-                [int(face_landmarks.landmark[i].x * w),
-                 int(face_landmarks.landmark[i].y * h)]
-                for i in LEFT_EYE
-            ])
+        left_eye = np.array([
+            [int(face_landmarks.landmark[i].x * w),
+             int(face_landmarks.landmark[i].y * h)]
+            for i in LEFT_EYE
+        ])
 
-            right_eye = np.array([
-                [int(face_landmarks.landmark[i].x * w),
-                 int(face_landmarks.landmark[i].y * h)]
-                for i in RIGHT_EYE
-            ])
+        right_eye = np.array([
+            [int(face_landmarks.landmark[i].x * w),
+             int(face_landmarks.landmark[i].y * h)]
+            for i in RIGHT_EYE
+        ])
 
-            ear = (eye_aspect_ratio(left_eye) +
-                   eye_aspect_ratio(right_eye)) / 2
+        ear = (eye_aspect_ratio(left_eye) +
+               eye_aspect_ratio(right_eye)) / 2
 
-            THRESHOLD = 0.25
+        THRESHOLD = 0.25
 
-            if ear < THRESHOLD:
-                st.error("😴 Eyes Closed")
-            else:
-                st.success("👀 Eyes Open")
+        if ear < THRESHOLD:
+            st.error("😴 Eyes Closed")
+        else:
+            st.success("👀 Eyes Open")
+
     else:
-        st.warning("Face not detected. Try another image.")
+        st.warning("No face detected. Please upload a clear face image.")
