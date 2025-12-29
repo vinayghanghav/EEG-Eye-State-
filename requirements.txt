@@ -1,9 +1,5 @@
 streamlit
-tensorflow
-numpy
-pandas
-scikit-learn
-matplotlib
 opencv-python-headless
-scipy
-mediapipe
+mediapipe==0.10.9
+numpy
+pillow
